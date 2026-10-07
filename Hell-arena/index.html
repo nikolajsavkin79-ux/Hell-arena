@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HELL ARENA v1.4 — Forged Titan</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { 
+    width: 100%; height: 100dvh; background: #000; overflow: hidden; 
+    font-family: 'Courier New', monospace; color: #ff4444; 
+    user-select: none; touch-action: none;
+    -webkit-user-select: none; -webkit-touch-callout: none;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  }
+  #game { 
+    display: block; width: 100vw; height: 100dvh;
+    image-rendering: pixelated; cursor: none; 
+    position: absolute; top: 0; left: 0;
+  }
+  body.menu-open #game { cursor: default; }
+  body.menu-open { cursor: default !important; }
+  body.menu-open * { cursor: default !important; }
+  
+  #gameTitle {
+    position: fixed; top: 10px; right: 10px;
+    background: rgba(0,0,0,0.7); border: 2px solid #ff2222; padding: 6px 12px;
+    font-size: 12px; text-shadow: 0 0 5px #ff0000; pointer-events: none; z-index: 5;
+    text-align: right; letter-spacing: 2px;
+  }
+  #gameTitle .title {
+    color: #ff2200; font-weight: bold; font-size: 14px;
+    text-shadow: 0 0 8px #ff0000, 0 0 15px #ff0000; letter-spacing: 3px;
+  }
+  #gameTitle .version {
+    color: #ffaa00; font-size: 10px; margin-top: 2px; display: block;
+  }
+  
+  #hud {
+    position: fixed; left: 10px; top: 10px;
+    background: rgba(0,0,0,0.7); border: 2px solid #ff2222; padding: 10px 14px;
+    font-size: 14px; text-shadow: 0 0 5px #ff0000; pointer-events: none; z-index: 5;
+    max-width: 280px;
+  }
+  #hud div { margin: 2px 0; }
+  #hud .label { color: #ffaa00; }
+  #buffs { margin-top: 8px; border-top: 1px solid #ff4444; padding-top: 5px; }
+  .buff-item { font-size: 11px; margin: 2px 0; }
+  .temporary-buff { opacity: 0.8; font-style: italic; }
+  
+  #startScreen {
+    position: fixed; inset: 0; background: radial-gradient(circle, #400, #000);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 10; cursor: pointer; padding: 20px; text-align: center;
+  }
+  #startScreen h1 {
+    font-size: 42px; color: #ff2200; letter-spacing: 6px;
+    text-shadow: 0 0 20px #ff0000, 0 4px 0 #000; animation: flicker 1.5s infinite alternate;
+  }
+  #startScreen p { margin-top: 20px; font-size: 18px; color: #ffaa44; animation: blink 1.2s infinite; }
+  #startScreen .info { margin-top: 30px; color: #aaa; font-size: 13px; line-height: 1.8; }
+  #startScreen .version-info {
+    margin-top: 20px; color: #ffaa00; font-size: 11px;
+    border: 1px solid #ffaa00; padding: 8px 15px;
+    background: rgba(255, 170, 0, 0.1);
+  }
+  #startScreen .secret-hint {
+    margin-top: 10px; color: #ff66ff; font-size: 11px;
+    font-style: italic;
+    border: 1px dashed #ff66ff; padding: 6px 12px;
+    background: rgba(255, 100, 255, 0.1);
+  }
+  @keyframes flicker { to { opacity: 0.8; text-shadow: 0 0 30px #ff0000; } }
+  @keyframes blink { 50% { opacity: 0.3; } }
+  
+  #crosshair {
+    position: fixed; top: 50%; left: 50%; width: 6px; height: 6px;
+    background: #0f0; border-radius: 50%; transform: translate(-50%, -50%);
+    pointer-events: none; opacity: 0.8; z-index: 5; mix-blend-mode: difference;
+  }
+  
+  #transitionScreen {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+    display: none; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 9; text-align: center; padding: 20px;
+  }
+  #transitionScreen h2 { font-size: 36px; color: #ffaa00; letter-spacing: 4px; text-shadow: 0 0 15px #ff8800; margin-bottom: 20px; }
+  #transitionScreen p { font-size: 18px; color: #ffcc66; }
+  
+  #interactHint {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, 80px);
+    background: rgba(0,0,0,0.8); border: 2px solid #ffaa00; padding: 8px 16px;
+    color: #ffcc66; font-size: 14px; z-index: 6; display: none;
+    text-shadow: 0 0 5px #ff8800; pointer-events: none; font-weight: bold;
+  }
+  
+  #relockHint {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9); border: 3px solid #ffaa00; padding: 20px 40px;
+    color: #ffcc66; font-size: 20px; z-index: 7; display: none;
+    text-shadow: 0 0 10px #ff8800; pointer-events: none;
+    animation: blink 1s infinite;
+  }
+  
+  #dialog {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.9); border: 2px solid #ffaa00; padding: 15px 25px;
+    color: #ffcc66; font-size: 16px; text-align: center; z-index: 6;
+    display: none; max-width: 80%; text-shadow: 0 0 5px #ff8800;
+  }
+  
+  #tradeMenu {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    display: none; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 8; padding: 20px;
+  }
+  #tradeMenu h2 { font-size: 32px; letter-spacing: 4px; margin-bottom: 20px; text-shadow: 0 0 15px currentColor; }
+  #tradeItems { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; max-width: 900px; max-height: 60vh; overflow-y: auto; }
+  .trade-item { background: rgba(20,0,40,0.9); border: 2px solid #aa44ff; padding: 15px; width: 220px; cursor: pointer; transition: all 0.2s; text-align: center; }
+  .trade-item:hover { transform: scale(1.05); border-color: #ff66ff; box-shadow: 0 0 15px #aa44ff; }
+  .trade-item .item-name { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
+  .trade-item .item-desc { color: #ccaaee; font-size: 12px; margin: 6px 0; line-height: 1.4; }
+  .trade-item .item-pros { color: #44ff44; font-size: 11px; margin: 3px 0; }
+  .trade-item .item-cons { color: #ff4444; font-size: 11px; margin: 3px 0; }
+  .trade-item .item-price { color: #ffcc00; font-size: 16px; margin-top: 8px; font-weight: bold; }
+  .trade-empty { color: #888; font-size: 16px; padding: 40px; }
+  .trade-item.shake { animation: shake 0.3s; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  #closeTradeBtn { margin-top: 25px; padding: 12px 30px; background: rgba(255,0,0,0.3); border: 2px solid #ff3333; color: #fff; font-size: 16px; cursor: pointer; font-family: inherit; }
+  #closeTradeBtn:hover { background: rgba(255,0,0,0.5); }
+  
+  #buffSelectScreen {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+    display: none; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 9; padding: 20px;
+  }
+  #buffSelectTitle {
+    font-size: 32px; color: #aa44ff; letter-spacing: 4px;
+    text-shadow: 0 0 15px #8800ff; margin-bottom: 10px; text-align: center;
+  }
+  #buffSelectSubtitle { color: #ffaa00; font-size: 14px; margin-bottom: 25px; }
+  #buffSelectOptions { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+  .buff-card {
+    background: rgba(20,0,40,0.9); border: 3px solid #aa44ff;
+    padding: 20px; width: 240px; cursor: pointer; transition: all 0.2s; text-align: center;
+  }
+  .buff-card:hover { transform: scale(1.05); border-color: #ff66ff; box-shadow: 0 0 20px #aa44ff; }
+  .buff-card-name { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+  .buff-card-desc { color: #ccaaee; font-size: 12px; margin: 8px 0; font-style: italic; }
+  .buff-card-pros { color: #44ff44; font-size: 12px; margin: 4px 0; }
+  .buff-card-cons { color: #ff4444; font-size: 12px; margin: 4px 0; }
+  .buff-card-price { color: #ffcc00; font-size: 18px; margin-top: 10px; font-weight: bold; }
+  .buff-card-duration { color: #888; font-size: 11px; margin-top: 5px; }
+  .buff-card.shake { animation: shake 0.3s; }
+  #buffSelectActions { margin-top: 25px; display: flex; gap: 15px; }
+  #buffRerollBtn, #buffSkipBtn {
+    padding: 12px 25px; font-size: 14px; cursor: pointer;
+    font-family: inherit; letter-spacing: 1px;
+  }
+  #buffRerollBtn { background: rgba(170,68,255,0.3); border: 2px solid #aa44ff; color: #aa44ff; }
+  #buffRerollBtn:hover { background: rgba(170,68,255,0.5); }
+  #buffSkipBtn { background: rgba(100,100,100,0.3); border: 2px solid #888; color: #888; }
+  #buffSkipBtn:hover { background: rgba(100,100,100,0.5); color: #fff; }
+  
+  #inventory {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+    display: none; flex-direction: column; justify-content: center; align-items: center;
+    z-index: 8; padding: 20px;
+  }
+  .inv-panel {
+    background: #c6c6c6; border: 4px solid;
+    border-color: #ffffff #555555 #555555 #ffffff;
+    box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #555555, 0 0 30px rgba(0,0,0,0.8);
+    padding: 16px; min-width: 400px; max-width: 90vw;
+  }
+  .inv-title { text-align: center; color: #3f3f3f; font-size: 20px; font-weight: bold; letter-spacing: 4px; margin-bottom: 16px; text-shadow: 2px 2px 0 #ffffff; }
+  .inv-content { display: flex; gap: 20px; align-items: flex-start; }
+  .inv-left { flex: 1; }
+  .inv-right {
+    width: 220px; background: #a0a0a0;
+    border: 2px solid; border-color: #555555 #ffffff #ffffff #555555;
+    padding: 10px; min-height: 200px;
+  }
+  .inv-right-title {
+    color: #3f3f3f; font-size: 12px; font-weight: bold;
+    margin-bottom: 8px; letter-spacing: 2px; text-align: center;
+  }
+  .inv-section { margin-bottom: 12px; }
+  .inv-section-label { color: #3f3f3f; font-size: 12px; font-weight: bold; margin-bottom: 6px; letter-spacing: 2px; }
+  .inv-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .slot {
+    width: 48px; height: 48px; background: #8b8b8b;
+    border: 3px solid; border-color: #373737 #ffffff #ffffff #373737;
+    box-shadow: inset 2px 2px 0 #555555, inset -2px -2px 0 #c6c6c6;
+    position: relative; display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .slot:hover { background: #a0a0a0; }
+  .slot.disabled { background: #5a5a5a; opacity: 0.6; cursor: not-allowed; }
+  .slot-icon { width: 40px; height: 40px; image-rendering: pixelated; pointer-events: none; }
+  .slot-hint { font-size: 24px; opacity: 0.3; pointer-events: none; }
+  .equip-slots { display: flex; gap: 8px; margin-bottom: 16px; padding: 8px; background: #a0a0a0; border: 2px solid; border-color: #555555 #ffffff #ffffff #555555; }
+  .equip-slot-wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .slot-type-label { position: absolute; top: -14px; left: 0; right: 0; text-align: center; font-size: 9px; color: #3f3f3f; font-weight: bold; pointer-events: none; }
+  #closeInvBtn { margin-top: 16px; padding: 10px 24px; background: #c6c6c6; border: 3px solid; border-color: #ffffff #555555 #555555 #ffffff; box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #555555; color: #3f3f3f; font-size: 14px; font-weight: bold; cursor: pointer; font-family: inherit; letter-spacing: 2px; }
+  #closeInvBtn:hover { background: #d6d6d6; }
+  .drag-ghost { position: fixed; width: 48px; height: 48px; image-rendering: pixelated; pointer-events: none; z-index: 1000; opacity: 0.85; }
+  
+  .item-tooltip {
+    position: fixed; background: #1a0010; border: 3px solid #aa44ff;
+    box-shadow: 0 0 20px rgba(170, 68, 255, 0.5), inset 0 0 10px rgba(0,0,0,0.8);
+    padding: 12px 16px; min-width: 200px; max-width: 260px;
+    z-index: 1001; pointer-events: none; font-family: 'Courier New', monospace;
+  }
+  .tt-name { font-size: 16px; font-weight: bold; margin-bottom: 8px; text-shadow: 0 0 8px currentColor; letter-spacing: 1px; }
+  .tt-desc { color: #ccaaee; font-size: 12px; margin-bottom: 8px; font-style: italic; line-height: 1.4; }
+  .tt-stats { background: rgba(0,0,0,0.4); border: 1px solid #555; padding: 8px; margin: 8px 0; font-size: 12px; color: #fff; }
+  .tt-stats div { margin: 3px 0; }
+  .tt-stats b { color: #ffcc00; }
+  .tt-pros { color: #44ff44; font-size: 11px; margin: 4px 0; }
+  .tt-cons { color: #ff4444; font-size: 11px; margin: 4px 0; }
+  
+  .buffs-section { margin-bottom: 12px; }
+  .buffs-section-title {
+    color: #3f3f3f; font-size: 10px; font-weight: bold;
+    margin-bottom: 5px; letter-spacing: 1px;
+    border-bottom: 1px solid #888; padding-bottom: 3px;
+  }
+  .buff-list-item {
+    background: #c6c6c6; border-left: 4px solid;
+    padding: 5px 8px; margin: 3px 0; font-size: 11px;
+    display: flex; flex-direction: column;
+  }
+  .buff-list-item.permanent { background: #c6d6c6; }
+  .buff-list-item.temporary { background: #d6c6d6; }
+  .buff-list-name { font-weight: bold; font-size: 11px; }
+  .buff-list-desc { color: #555; font-size: 10px; margin-top: 2px; }
+  .buffs-empty { color: #888; font-size: 11px; text-align: center; padding: 20px 0; }
+  
+  .mobile-only { display: none !important; }
+  @media (pointer: coarse) { .mobile-only { display: flex !important; } }
+  
+  #joystick {
+    position: fixed; width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.2);
+    z-index: 5; touch-action: none; display: none;
+    left: 30px; bottom: 40px; pointer-events: none;
+  }
+  #joystick-knob {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 50px; height: 50px; border-radius: 50%;
+    background: rgba(100,200,255,0.5); border: 2px solid #44aaff;
+  }
+  #lookZone { display: none !important; }
+  #atkBtn, #useBtn, #invBtn { pointer-events: auto; }
+  
+  #atkBtn {
+    position: fixed; right: 30px; bottom: 180px;
+    width: 70px; height: 70px; border-radius: 50%;
+    background: rgba(255,0,0,0.3); border: 3px solid #ff3333;
+    color: #fff; font-size: 14px; font-weight: bold;
+    align-items: center; justify-content: center; z-index: 6; touch-action: none;
+  }
+  #atkBtn:active { background: rgba(255,0,0,0.6); transform: scale(0.95); }
+  #useBtn {
+    position: fixed; right: 30px; bottom: 100px;
+    width: 55px; height: 55px; border-radius: 50%;
+    background: rgba(0,150,255,0.25); border: 2px solid #44aaff;
+    color: #44aaff; font-size: 11px; font-weight: bold;
+    align-items: center; justify-content: center; z-index: 6; touch-action: none;
+  }
+  #invBtn {
+    position: fixed; right: 100px; bottom: 100px;
+    width: 55px; height: 55px; border-radius: 50%;
+    background: rgba(150,0,255,0.25); border: 2px solid #aa44ff;
+    color: #aa44ff; font-size: 11px; font-weight: bold;
+    align-items: center; justify-content: center; z-index: 6; touch-action: none;
+  }
+  #runIndicator {
+    position: fixed; left: 50px; bottom: 170px;
+    color: #ffaa00; font-size: 11px; font-weight: bold;
+    z-index: 5; display: none; pointer-events: none;
+    text-shadow: 0 0 5px #ff8800;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+<div id="crosshair"></div>
+
+<div id="gameTitle">
+  <div class="title">HELL ARENA</div>
+  <span class="version">v1.4 — Forged Titan</span>
+</div>
+
+<div id="hud">
+  <div><span class="label">WAVE:</span> <span id="wave">0</span></div>
+  <div><span class="label">HP:</span> <span id="hp">100</span>/<span id="maxHp">100</span></div>
+  <div><span class="label">MONEY:</span> $<span id="money">0</span></div>
+  <div><span class="label">ENEMIES:</span> <span id="enemies">0</span></div>
+  <div><span class="label">WEAPON:</span> <span id="weapon">КУЛАКИ</span></div>
+  <div id="buffs"></div>
+</div>
+
+<div id="interactHint">[E] Торговать</div>
+<div id="relockHint">🖱️ КЛИКНИ ЧТОБЫ ПРОДОЛЖИТЬ</div>
+<div id="dialog"></div>
+
+<div id="transitionScreen">
+  <h2 id="transTitle">ПЕРЕХОД</h2>
+  <p id="transText">...</p>
+</div>
+
+<div id="tradeMenu">
+  <h2 id="tradeTitle">ТОРГОВЕЦ</h2>
+  <div id="tradeItems"></div>
+  <button id="closeTradeBtn">ЗАКРЫТЬ [E]</button>
+</div>
+
+<div id="buffSelectScreen">
+  <h2 id="buffSelectTitle">ВЫБЕРИ УСИЛЕНИЕ</h2>
+  <div id="buffSelectSubtitle">Действует только 1 волну</div>
+  <div id="buffSelectOptions"></div>
+  <div id="buffSelectActions">
+    <button id="buffRerollBtn">🎲 РЕРOЛЛ</button>
+    <button id="buffSkipBtn">ПРОПУСТИТЬ</button>
+  </div>
+</div>
+
+<div id="inventory">
+  <div class="inv-panel">
+    <div class="inv-title">ИНВЕНТАРЬ</div>
+    <div class="inv-content">
+      <div class="inv-left">
+        <div class="inv-section">
+          <div class="inv-section-label">ЭКИПИРОВКА</div>
+          <div class="equip-slots">
+            <div class="equip-slot-wrap">
+              <div class="slot" data-slot-type="weapon" data-slot-index="0" title="Пусто (кулаки)"></div>
+              <div class="slot-type-label">ОРУЖИЕ</div>
+            </div>
+            <div class="equip-slot-wrap">
+              <div class="slot disabled" data-slot-type="armor" data-slot-index="0" title="Пусто"></div>
+              <div class="slot-type-label">БРОНЯ</div>
+            </div>
+          </div>
+        </div>
+        <div class="inv-section">
+          <div class="inv-section-label">ХРАНИЛИЩЕ</div>
+          <div class="inv-row" id="storageSlots"></div>
+        </div>
+      </div>
+      <div class="inv-right">
+        <div class="inv-right-title">АКТИВНЫЕ ЭФФЕКТЫ</div>
+        <div id="activeBuffsPanel"></div>
+      </div>
+    </div>
+    <button id="closeInvBtn">ЗАКРЫТЬ [I]</button>
+  </div>
+</div>
+
+<div id="startScreen">
+  <h1>АДСКАЯ АРЕНА</h1>
+  <p>⬇ НАЖМИ ЧТОБЫ НАЧАТЬ ⬇</p>
+  <div class="info">
+    ПК: WASD + Мышь + ЛКМ + E + I<br>
+    Мобайл: Джойстик / Поворот / Кнопки<br><br>
+    🔫 Оружие: Кулаки → Палка → Нож → Пистолет → ПП → Дробовик → Гаусс → БФГ<br>
+    👾 Враги: Слизни (3 цвета) + Скелеты с луком + БОСС<br>
+    🌳 Дерево в магазине — сломай для палки!<br>
+    ⚔️ <b>Волна 10: БОСС — КОВАННЫЙ ТИТАН</b>
+  </div>
+  <div class="secret-hint">
+    💜 Секрет: пройди 9 волн без оружия и получи уникальное оружие...
+  </div>
+  <div class="version-info">
+    v1.4 — Обновление "Кованный Титан"<br>
+    🆕 Скелеты • ПП • Достижение "Дум Гай" • Секретный меч
+  </div>
+</div>
+
+<div id="lookZone"></div>
+<div id="joystick"><div id="joystick-knob"></div></div>
+<div id="runIndicator">🏃 БЕГ</div>
+<div id="useBtn" class="mobile-only">USE</div>
+<div id="invBtn" class="mobile-only">INV</div>
+<div id="atkBtn" class="mobile-only">ATK</div>
+
+<script src="data.js"></script>
+<script src="core.js"></script>
+<script src="ui.js"></script>
+<script>
+  function fixViewportHeight() {
+    const vh = window.innerHeight;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+    const game = document.getElementById('game');
+    if (game) game.style.height = vh + 'px';
+  }
+  
+  window.addEventListener('load', () => {
+    fixViewportHeight();
+    window.addEventListener('resize', fixViewportHeight);
+    window.addEventListener('orientationchange', () => setTimeout(fixViewportHeight, 100));
+    
+    const storageRow = document.getElementById('storageSlots');
+    for (let i = 0; i < 9; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      slot.dataset.slotType = 'storage';
+      slot.dataset.slotIndex = i;
+      storageRow.appendChild(slot);
+    }
+    
+    const checkMenuState = () => {
+      const menuOpen = ['tradeMenu', 'inventory', 'buffSelectScreen'].some(id => {
+        const el = document.getElementById(id);
+        return el && el.style.display === 'flex';
+      });
+      document.body.classList.toggle('menu-open', menuOpen);
+    };
+    const observer = new MutationObserver(checkMenuState);
+    ['tradeMenu', 'inventory', 'buffSelectScreen'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el, { attributes: true, attributeFilter: ['style'] });
+    });
+    
+    const runInd = document.getElementById('runIndicator');
+    setInterval(() => {
+      if (typeof player !== 'undefined' && player.running) {
+        runInd.style.display = 'block';
+      } else {
+        runInd.style.display = 'none';
+      }
+    }, 100);
+    
+    initGame(document.getElementById('game'));
+  });
+</script>
+</body>
+</html>
